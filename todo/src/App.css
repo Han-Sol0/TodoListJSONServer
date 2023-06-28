@@ -1,0 +1,14 @@
+.Do {
+    display: flex;
+    justify-content: space-between;
+    margin:  5px;
+    border: 1px solid #ed6742;
+    background-color: antiquewhite;
+
+}
+.made {
+    background-color: green;
+}
+.noMade {
+    background-color: red;
+}
