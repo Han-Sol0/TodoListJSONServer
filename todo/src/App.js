@@ -1,86 +1,99 @@
-import "./App.css";
 import { useEffect, useState } from "react";
-import Completed from "./components/completed";
+import { PostItem } from "./PostItem";
+import { useDebounce } from "./usehooks";
 
 function App() {
-  const [todoList, setTodoList] = useState([]);
-  const [refreshTodoFlag, setRefreshTodoFlag] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const hadleSearhQuery = ({ target }) => {
-    setSearchQuery(target.value);
-  };
-  const [sortTodoFlag, setSortTodoFlag] = useState(false);
-  const sortTodos = () => {
-    setSortTodoFlag(!sortTodoFlag);
-  };
+    const [data, setData] = useState([]);
+    const [searchQuery, setSearchQuery] = useState("");
 
-  const refreshTodo = () => setRefreshTodoFlag(!refreshTodoFlag);
+    const valueSearch = useDebounce(searchQuery, 2000);
 
-  useEffect(() => {
-    fetch(
-      sortTodoFlag
-        ? `http://localhost:3005/todos?q=${searchQuery}`
-        : `http://localhost:3005/todos?_sort=title&_order=asc`
-    )
-      .then((loadedData) => loadedData.json())
-      .then((loadedList) => {
-        setTodoList(loadedList);
-      });
-  }, [refreshTodoFlag, searchQuery, sortTodoFlag]);
+    const handleSearchQuery = ({ target }) => {
+        setSearchQuery(target.value);
+    };
 
-  const requestAddTodos = () => {
-    fetch("http://localhost:3005/todos", {
-      method: "POST",
-      headers: { "Content-Type": "application/json;charset=utf-8" },
-      body: JSON.stringify({
-        title:
-          "laboriosam mollitia et enim quasi adipisci quia provident illum",
-        completed: false,
-      }),
-    })
-      .then((rawResponse) => rawResponse.json())
-      .then(() => {
-        refreshTodo();
-      });
-  };
+    useEffect(() => {
+        fetch(`http://localhost:3005/todos?q=${valueSearch}`)
+            .then((response) => response.json())
+            .then((data) => {
+                setData(data);
+            });
+    }, [valueSearch]);
 
-  const requestUpdateTodos = () => {
-    fetch("http://localhost:3005/todos/1", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json;charset=utf-8" },
-      body: JSON.stringify({
-        title:
-          "laboriosam mollitia et enim quasi adipisci quia provident illum",
-        completed: true,
-      }),
-    }).then(() => refreshTodo());
-  };
+    const createTask = async (payload) => {
+        const response = await fetch("http://localhost:3005/todos", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+        });
+        const post = await response.json();
+        setData((prevState) => [...prevState, post]);
+    };
+    const removeTask = async (id) => {
+        await fetch(`http://localhost:3005/todos/${id}`, {
+            method: "DELETE",
+            headers: {
+                "Content-Type": "application/json",
+            },
+        });
+        setData(data.filter((post) => post.id !== id));
+    };
+    const updatePost = async (id, payload) => {
+        const postItemIndex = data.findIndex((post) => post.id === id);
+        const postItem = data.find((post) => post.id === id);
+        if (postItemIndex !== -1) {
+            const response = await fetch(`http://localhost:3005/todos/${id}`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ ...postItem, title: payload }),
+            });
+            const updatePost = await response.json();
 
-  const requestDeleteTodos = () => {
-    fetch("http://localhost:3005/todos/1", {
-      method: "DELETE",
-    }).then(() => refreshTodo());
-  };
+            const copyData = data.slice();
+            copyData[postItemIndex] = updatePost;
+            setData(copyData);
+        }
+    };
 
-  return (
-    <div className="App">
-      <input
-        placeholder="Поиск"
-        value={searchQuery}
-        onChange={hadleSearhQuery}
-      ></input>
-      {todoList.map(({ id, title, completed }) => (
-        <div className="Do" key={id}>
-          <span>{title}</span>
-          {Completed(completed)}
+    return (
+        <div>
+            <input
+                placeholder="Search"
+                value={searchQuery}
+                onChange={handleSearchQuery}
+            />
+            <ul>
+                {data.length > 0 ? (
+                    <div>
+                        {data.map((post) => (
+                            <PostItem
+                                key={post.id}
+                                {...post}
+                                handleDelete={removeTask}
+                                handleUpdate={updatePost}
+                            />
+                        ))}
+                    </div>
+                ) : (
+                    <h1>Постов нет</h1>
+                )}
+            </ul>
+            <button
+                onClick={() =>
+                    createTask({
+                        title: "Новая заметка",
+                        completed: false,
+                    })
+                }
+            >
+                Отправить Пост
+            </button>
         </div>
-      ))}
-      <button onClick={sortTodos}>Сортировать</button>
-      <button onClick={requestAddTodos}>Добавить дело</button>
-      <button onClick={requestUpdateTodos}>Обновим первое дело</button>
-      <button onClick={requestDeleteTodos}>Удалить 1 дело</button>
-    </div>
-  );
+    );
 }
 
 export default App;
