@@ -11,14 +11,22 @@ function App() {
     const handleSearchQuery = ({ target }) => {
         setSearchQuery(target.value);
     };
+    const [sortTodoFlag, setSortTodoFlag] = useState(false);
+    const sortTodos = () => {
+        setSortTodoFlag(!sortTodoFlag);
+    };
 
     useEffect(() => {
-        fetch(`http://localhost:3005/todos?q=${valueSearch}`)
+        fetch(
+            sortTodoFlag
+                ? `http://localhost:3005/todos?q=${valueSearch}`
+                : `http://localhost:3005/todos?_sort=title&_order=asc`
+        )
             .then((response) => response.json())
             .then((data) => {
                 setData(data);
             });
-    }, [valueSearch]);
+    }, [valueSearch, sortTodoFlag]);
 
     const createTask = async (payload) => {
         const response = await fetch("http://localhost:3005/todos", {
@@ -66,6 +74,7 @@ function App() {
                 value={searchQuery}
                 onChange={handleSearchQuery}
             />
+            <button onClick={sortTodos}>Сортировать</button>
             <ul>
                 {data.length > 0 ? (
                     <div>
